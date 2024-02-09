@@ -7801,7 +7801,7 @@ uint16_t mode_2DPixelHeart() {
   if (!strip.isMatrix) return mode_static(); // not a 2D set-up
 
   const uint8_t speed = 1 + ((255 - SEGMENT.speed) >> 1); // 128 - 1
-	const uint8_t intensity = 1 + (SEGMENT.intensity >> 4); // 1 - 32
+	const uint8_t intensity = 1 + (SEGMENT.intensity >> 2); // 1 - 64
 	const uint8_t direction = SEGMENT.check1; // bool
 
   const uint16_t cols = SEGMENT.virtualWidth();
@@ -7817,7 +7817,7 @@ uint16_t mode_2DPixelHeart() {
       float dx = (x - centerX) * scale;
       float dy = - (y - centerY) * scale + heartOffsetY;
 			float dxy = 1.25 * dy - sqrt(fabs(dx));
-      float h = dx * dx + dxy * dxy - 1;
+      float h = sqrt(2 + dx * dx + dxy * dxy - 1);
       SEGMENT.setPixelColorXY(x, y, SEGMENT.color_from_palette((direction ? 1 : -1) * h * intensity + advance, false, PALETTE_SOLID_WRAP, 255));
     }
   }
