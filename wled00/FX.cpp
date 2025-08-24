@@ -5113,7 +5113,7 @@ uint16_t mode_2Dgameoflife(void) { // Written by Ewoud Wijma, inspired by https:
 
   if (!SEGENV.allocateData(dataSize + sizeof(uint16_t)*crcBufferLen)) return mode_static(); //allocation failed
   CRGB *prevLeds = reinterpret_cast<CRGB*>(SEGENV.data);
-  uint16_t *crcBuffer = reinterpret_cast<uint16_t*>(SEGENV.data + dataSize); 
+  uint16_t *crcBuffer = reinterpret_cast<uint16_t*>(SEGENV.data + dataSize);
 
   CRGB backgroundColor = SEGCOLOR(1);
 
@@ -6234,7 +6234,7 @@ uint16_t mode_2Dplasmarotozoom() {
   float *a = reinterpret_cast<float*>(SEGENV.data);
   byte *plasma = reinterpret_cast<byte*>(SEGENV.data+sizeof(float));
 
-  unsigned ms = strip.now/15;  
+  unsigned ms = strip.now/15;
 
   // plasma
   for (int j = 0; j < rows; j++) {
@@ -7570,7 +7570,7 @@ uint16_t mode_2Ddistortionwaves() {
   unsigned cy1 = beatsin8_t(15-speed,0,rows-1)*scale;
   unsigned cx2 = beatsin8_t(17-speed,0,cols-1)*scale;
   unsigned cy2 = beatsin8_t(14-speed,0,rows-1)*scale;
-  
+
   unsigned xoffs = 0;
   for (int x = 0; x < cols; x++) {
     xoffs += scale;
@@ -7579,9 +7579,9 @@ uint16_t mode_2Ddistortionwaves() {
     for (int y = 0; y < rows; y++) {
        yoffs += scale;
 
-      byte rdistort = cos8_t((cos8_t(((x<<3)+a )&255)+cos8_t(((y<<3)-a2)&255)+a3   )&255)>>1; 
-      byte gdistort = cos8_t((cos8_t(((x<<3)-a2)&255)+cos8_t(((y<<3)+a3)&255)+a+32 )&255)>>1; 
-      byte bdistort = cos8_t((cos8_t(((x<<3)+a3)&255)+cos8_t(((y<<3)-a) &255)+a2+64)&255)>>1; 
+      byte rdistort = cos8((cos8(((x<<3)+a )&255)+cos8(((y<<3)-a2)&255)+a3   )&255)>>1;
+      byte gdistort = cos8((cos8(((x<<3)-a2)&255)+cos8(((y<<3)+a3)&255)+a+32 )&255)>>1;
+      byte bdistort = cos8((cos8(((x<<3)+a3)&255)+cos8(((y<<3)-a) &255)+a2+64)&255)>>1;
 
       byte valueR = rdistort+ w*  (a- ( ((xoffs - cx)  * (xoffs - cx)  + (yoffs - cy)  * (yoffs - cy))>>7  ));
       byte valueG = gdistort+ w*  (a2-( ((xoffs - cx1) * (xoffs - cx1) + (yoffs - cy1) * (yoffs - cy1))>>7 ));
@@ -7591,7 +7591,7 @@ uint16_t mode_2Ddistortionwaves() {
       valueG = gamma8(cos8_t(valueG));
       valueB = gamma8(cos8_t(valueB));
 
-      SEGMENT.setPixelColorXY(x, y, RGBW32(valueR, valueG, valueB, 0)); 
+      SEGMENT.setPixelColorXY(x, y, RGBW32(valueR, valueG, valueB, 0));
     }
   }
 
@@ -7698,7 +7698,7 @@ uint16_t mode_2Dsoap() {
       }
       CRGB PixelA = CRGB::Black;
       if ((zD >= 0) && (zD < rows)) PixelA = SEGMENT.getPixelColorXY(x, zD);
-      else                          PixelA = ColorFromPalette(SEGPALETTE, ~noise3d[XY(x,abs(zD))]*3); 
+      else                          PixelA = ColorFromPalette(SEGPALETTE, ~noise3d[XY(x,abs(zD))]*3);
       CRGB PixelB = CRGB::Black;
       if ((zF >= 0) && (zF < rows)) PixelB = SEGMENT.getPixelColorXY(x, zF);
       else                          PixelB = ColorFromPalette(SEGPALETTE, ~noise3d[XY(x,abs(zF))]*3);
@@ -7790,6 +7790,50 @@ uint16_t mode_2Dwavingcell() {
   return FRAMETIME;
 }
 static const char _data_FX_MODE_2DWAVINGCELL[] PROGMEM = "Waving Cell@!,,Amplitude 1,Amplitude 2,Amplitude 3;;!;2";
+
+
+/*
+ * 2D Pixel Heart
+ *
+ * By @tokudu
+ * Ported from: https://github.com/thepixelheart/PixelPusher/blob/master/PixelCore/PHRainbowHeartAnimation.m
+ * Demo: https://editor.soulmatelights.com/gallery/2592-pixel-heart
+ *
+ * The algorith is based on the following equation of a heart shape:
+ * h = x^2 + (5.0*y/4.0-sqrt(|x|))^2
+ * where:
+ *   h = 0 (at boundary), h > 0 (inside), h < 0 (outside)
+ *   y ~ (-1.1 , 1.3 )
+ *   x ~ (-1.1 , 1.1 )
+ */
+uint16_t mode_2DPixelHeart() {
+  if (!strip.isMatrix) return mode_static(); // not a 2D set-up
+
+  const uint8_t speed = 1 + ((255 - SEGMENT.speed) >> 1); // 128 - 1
+	const uint8_t intensity = 1 + (SEGMENT.intensity >> 2); // 1 - 64
+	const uint8_t direction = SEGMENT.check1; // bool
+
+  const uint16_t cols = SEGMENT.virtualWidth();
+  const uint16_t rows = SEGMENT.virtualHeight();
+  const float centerX = cols / 2.0f - 0.5f;
+  const float centerY = rows / 2.0f - 0.5f;
+  const float heartSize = 2.4f;
+  const float heartOffsetY = 0.6f;
+  const float scale = 2 * heartSize / min(cols, rows);
+	const float advance = strip.now / speed;
+  for (int x = 0; x < cols; x++) {
+    for (int y = 0; y < rows; y++) {
+      float dx = (x - centerX) * scale;
+      float dy = - (y - centerY) * scale + heartOffsetY;
+			float dxy = 1.25 * dy - sqrt(fabs(dx));
+      float h = sqrt(2 + dx * dx + dxy * dxy - 1);
+      SEGMENT.setPixelColorXY(x, y, SEGMENT.color_from_palette((direction ? 1 : -1) * h * intensity + advance, false, PALETTE_SOLID_WRAP, 255));
+    }
+  }
+
+  return FRAMETIME;
+} // mode_2DPixelHeart()
+static const char _data_FX_MODE_2DPIXELHEART[] PROGMEM = "Pixel Heart@!,!,,,,Flip Direction;;!;2;pal=46"; //beatsin
 
 
 #endif // WLED_DISABLE_2D
@@ -8035,6 +8079,7 @@ void WS2812FX::setupEffectData() {
   addEffect(FX_MODE_2DSOAP, &mode_2Dsoap, _data_FX_MODE_2DSOAP);
   addEffect(FX_MODE_2DOCTOPUS, &mode_2Doctopus, _data_FX_MODE_2DOCTOPUS);
   addEffect(FX_MODE_2DWAVINGCELL, &mode_2Dwavingcell, _data_FX_MODE_2DWAVINGCELL);
+	addEffect(FX_MODE_2DPIXELHEART, &mode_2DPixelHeart, _data_FX_MODE_2DPIXELHEART); // audio
 
   addEffect(FX_MODE_2DAKEMI, &mode_2DAkemi, _data_FX_MODE_2DAKEMI); // audio
 #endif // WLED_DISABLE_2D
