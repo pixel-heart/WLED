@@ -260,7 +260,7 @@ using PSRAMDynamicJsonDocument = BasicJsonDocument<PSRAM_Allocator>;
 #define STRINGIFY(X) #X
 #define TOSTRING(X) STRINGIFY(X)
 
-#define WLED_CODENAME "Kōsen"
+#define WLED_CODENAME "PixelHeart"
 
 // AP and OTA default passwords (for maximum security change them!)
 WLED_GLOBAL char apPass[65]  _INIT(WLED_AP_PASS);
