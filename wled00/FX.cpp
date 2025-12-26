@@ -7806,35 +7806,120 @@ static const char _data_FX_MODE_2DWAVINGCELL[] PROGMEM = "Waving Cell@!,,Amplitu
  *   y ~ (-1.1 , 1.3 )
  *   x ~ (-1.1 , 1.1 )
  */
+
+typedef struct HeartState {
+  float currentSize;
+  float targetSize;
+  uint32_t lastUpdate;
+} heartState;
+
 uint16_t mode_2DPixelHeart() {
   if (!strip.isMatrix) return mode_static(); // not a 2D set-up
 
   const uint8_t speed = 1 + ((255 - SEGMENT.speed) >> 1); // 128 - 1
-	const uint8_t intensity = 1 + (SEGMENT.intensity >> 2); // 1 - 64
-	const uint8_t direction = SEGMENT.check1; // bool
+  const uint8_t intensity = 1 + (SEGMENT.intensity >> 2); // 1 - 64
+  const uint8_t direction = SEGMENT.check1; // bool
+  CRGB bgColor = CRGB(SEGCOLOR(0));
+  CRGB fxColor = CRGB(SEGCOLOR(1));
 
   const uint16_t cols = SEGMENT.virtualWidth();
   const uint16_t rows = SEGMENT.virtualHeight();
   const float centerX = cols / 2.0f - 0.5f;
   const float centerY = rows / 2.0f - 0.5f;
-  const float heartSize = 2.4f;
+
+  // Allocate data for heart state
+  if (!SEGENV.allocateData(sizeof(heartState))) return mode_static();
+  heartState* heart = reinterpret_cast<heartState*>(SEGENV.data);
+
+  // Initialize on first run
+  if (SEGENV.call == 0) {
+    heart->currentSize = 0.0f;
+    heart->targetSize = 0.0f;
+    heart->lastUpdate = strip.now;
+  }
+
+  // Get audio data
+  um_data_t *um_data;
+  if (!UsermodManager::getUMData(&um_data, USERMOD_ID_AUDIOREACTIVE)) {
+    um_data = simulateSound(SEGMENT.soundSim);
+  }
+  float volumeSmth = *(float*) um_data->u_data[0];
+  uint8_t *fftResult = (uint8_t*) um_data->u_data[2];
+  float bass = fftResult[0] / 255.0f;  // Normalize bass to 0-1
+
+  // Apply sensitivity scaling (custom1: 0-255, default 128)
+  float sensitivity = (float)SEGMENT.custom1 / 128.0f; // 0-2x range, 1.0 at default
+  volumeSmth *= sensitivity;
+  bass *= sensitivity;
+
+  // Calculate target size based on audio
+  // Bass drives size (0.3 to 1.8), volume adds extra boost
+  float audioSize = 0.3f + (bass * 1.5f) + ((volumeSmth / 255.0f) * 0.4f);
+
+  // Update target if new size is larger (instant grow on beats)
+  if (audioSize > heart->targetSize) {
+    heart->targetSize = audioSize;
+  }
+
+  // Calculate time delta for smooth animation
+  uint32_t now = strip.now;
+  float dt = (now - heart->lastUpdate) / 1000.0f; // delta time in seconds
+  heart->lastUpdate = now;
+
+  // Decay parameters (inspired by starburst)
+  const float decayTime = 800.0f; // ms for heart to shrink
+  const float minSize = 0.0f;     // minimum heart size
+
+  // Smooth decay: target shrinks over time, current follows target
+  float decayRate = dt / (decayTime / 1000.0f);
+  heart->targetSize -= decayRate * (heart->targetSize - minSize);
+  if (heart->targetSize < minSize) heart->targetSize = minSize;
+
+  // Current size smoothly follows target (lerp)
+  float lerpSpeed = 8.0f * dt; // How fast current catches up to target
+  heart->currentSize += (heart->targetSize - heart->currentSize) * lerpSpeed;
+
+  // Threshold scales with currentSize - larger size = more pixels inside = bigger heart
+  float threshold = heart->currentSize * heart->currentSize * 1.2f;
+
+  // Calculate fade based on current size for brightness
+  float sizeFactor = (heart->currentSize - minSize) / (1.8f - minSize);
+  sizeFactor = constrain(sizeFactor, 0.0f, 1.0f);
+  uint8_t innerBrightness = 64 + (uint8_t)(191 * sizeFactor); // 64-255 based on size
+
+  // Outer heart: normal palette animation
+  const float outerHeartSize = 2.4f;
   const float heartOffsetY = 0.6f;
-  const float scale = 2 * heartSize / min(cols, rows);
-	const float advance = strip.now / speed;
+  const float scale = 2 * outerHeartSize / min(cols, rows);
+  const float advance = strip.now / speed;
+
   for (int x = 0; x < cols; x++) {
     for (int y = 0; y < rows; y++) {
+      // Draw outer heart with palette
       float dx = (x - centerX) * scale;
       float dy = - (y - centerY) * scale + heartOffsetY;
-			float dxy = 1.25 * dy - sqrt(fabs(dx));
+      float dxy = 1.25 * dy - sqrt(fabs(dx));
       float h = sqrt(2 + dx * dx + dxy * dxy - 1);
-      SEGMENT.setPixelColorXY(x, y, SEGMENT.color_from_palette((direction ? 1 : -1) * h * intensity + advance, false, PALETTE_SOLID_WRAP, 255));
+
+      // Draw inner heart with SEGCOLOR(0) and SEGCOLOR(1)
+      if (heart->currentSize > minSize && h < threshold) {
+        // Use distance from center to create gradient
+        uint8_t blend = (uint8_t)((h / threshold) * 255);
+        blend = constrain(blend, 0, 255);
+        CRGB innerColor = bgColor.lerp8(fxColor, blend);
+
+        // Apply brightness fade
+        innerColor.nscale8(innerBrightness);
+        SEGMENT.setPixelColorXY(x, y, innerColor);
+      } else {
+        SEGMENT.setPixelColorXY(x, y, SEGMENT.color_from_palette((direction ? 1 : -1) * h * intensity + advance, false, PALETTE_SOLID_WRAP, 255));
+      }
     }
   }
 
   return FRAMETIME;
-} // mode_2DPixelHeart()
-static const char _data_FX_MODE_2DPIXELHEART[] PROGMEM = "Pixel Heart@!,!,,,,Flip Direction;;!;2;pal=46"; //beatsin
-
+} // mode_2DPixelHeartSR()
+static const char _data_FX_MODE_2DPIXELHEART[] PROGMEM = "Pixel Heart@!,!,Sensitivity,,,Flip Direction;Fx1,Fx2,;!;2v;pal=46,c1=128";
 
 #endif // WLED_DISABLE_2D
 
