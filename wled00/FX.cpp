@@ -7806,35 +7806,145 @@ static const char _data_FX_MODE_2DWAVINGCELL[] PROGMEM = "Waving Cell@!,,Amplitu
  *   y ~ (-1.1 , 1.3 )
  *   x ~ (-1.1 , 1.1 )
  */
+
+typedef struct HeartState {
+  float centerX;
+  float centerY;
+  float scale;
+  
+  float pulseThreshold;
+  float targetThreshold;
+  uint32_t lastUpdate;
+  float pulseColorHue;
+  float pulseColorValue;
+} heartState;
+
 uint16_t mode_2DPixelHeart() {
   if (!strip.isMatrix) return mode_static(); // not a 2D set-up
+  const float HEART_SIZE = 2.4f;
+  const float HEART_OFFSET_Y = 0.6f;
+  const float PULSE_SIZE_GROW_TIME = 0.125f; // time seconds for pulse to grow
+  const float PULSE_SIZE_DECAY_TIME = 0.8f; // time in seconds for pulse to shrink 
+  const float PULSE_COLOR_DECAY_TIME = 0.333f; // time in seconds for pulse color to change
 
   const uint8_t speed = 1 + ((255 - SEGMENT.speed) >> 1); // 128 - 1
-	const uint8_t intensity = 1 + (SEGMENT.intensity >> 2); // 1 - 64
-	const uint8_t direction = SEGMENT.check1; // bool
-
+  const uint8_t intensity = 1 + (SEGMENT.intensity >> 2); // 1 - 64
+  float sensitivity = (float)SEGMENT.custom1 / 64.0f; // 0-4x range, 2.0 at default
+  const uint8_t direction = SEGMENT.check1; // bool
   const uint16_t cols = SEGMENT.virtualWidth();
   const uint16_t rows = SEGMENT.virtualHeight();
-  const float centerX = cols / 2.0f - 0.5f;
-  const float centerY = rows / 2.0f - 0.5f;
-  const float heartSize = 2.4f;
-  const float heartOffsetY = 0.6f;
-  const float scale = 2 * heartSize / min(cols, rows);
-	const float advance = strip.now / speed;
+
+  // Allocate data for heart state
+  if (!SEGENV.allocateData(sizeof(heartState))) return mode_static();
+  heartState* heart = reinterpret_cast<heartState*>(SEGENV.data);
+
+  // Initialize on first run
+  if (SEGENV.call == 0) {
+    heart->centerX = cols / 2.0f - 0.5f;
+    heart->centerY = rows / 2.0f - 0.5f;
+    heart->scale = 2 * HEART_SIZE / min(cols, rows);
+    
+    heart->pulseThreshold = 0.0f;
+    heart->targetThreshold = 0.0f;
+    heart->pulseColorHue = 0.0f;
+    heart->pulseColorValue = 0.0f;
+    heart->lastUpdate = strip.now;
+  }
+
+  // Calculate time delta for smooth animation
+  uint32_t now = strip.now;
+  const float advance = strip.now / speed;
+  const float dt = (now - heart->lastUpdate) / 1000.0f; // delta time in seconds
+  heart->lastUpdate = now;
+  const float pulseSizeDecayRate = dt / PULSE_SIZE_DECAY_TIME;
+  const float pulseSizeGrowRate = dt / PULSE_SIZE_GROW_TIME;
+  const float pulseColorDecayRate = dt / PULSE_COLOR_DECAY_TIME;
+
+  // Get audio data
+  um_data_t *um_data;
+  if (!UsermodManager::getUMData(&um_data, USERMOD_ID_AUDIOREACTIVE)) {
+    um_data = simulateSound(SEGMENT.soundSim);
+  }
+  float volumeSmth = *(float*) um_data->u_data[0];
+  uint8_t *fftResult = (uint8_t*) um_data->u_data[2];
+  float bass = fftResult[0] / 255.0f;  // Normalize bass to 0-1
+  uint8_t dominantBand = 0;
+  uint8_t dominantBandValue = 0;
+  for (int i = 0; i < 16; i++) {
+    if (fftResult[i] > dominantBandValue) {
+      dominantBandValue = fftResult[i];
+      dominantBand = i;
+    }
+  }  
+
+  // Apply sensitivity scaling (custom1: 0-255, default 128)
+  volumeSmth *= sensitivity;
+  bass *= sensitivity;
+
+  // Calculate pulse threshold based on audio
+  // Bass drives size (0.3 to 1.8), volume adds extra boost
+  float pulseThreshold = 0.3f + (bass * 1.5f) + ((volumeSmth / 255.0f) * 0.4f);
+  if (pulseThreshold > heart->targetThreshold) {
+    heart->targetThreshold = pulseThreshold;
+  }
+
+  // Smooth decay: target shrinks over time, current follows target
+  heart->targetThreshold -= pulseSizeDecayRate * (heart->targetThreshold);
+  if (heart->targetThreshold < 0.0f) heart->targetThreshold = 0.0f;
+  heart->pulseThreshold += (heart->targetThreshold - heart->pulseThreshold) * pulseSizeGrowRate;
+
+  // Max threshold at which 
+  // Threshold scales with currentSize and maxSize - larger size = more pixels inside = bigger heart
+  float threshold = constrain(heart->pulseThreshold * heart->pulseThreshold * 0.8f, 0, 3.872f);
+
+  // Calculate fade based on current size for brightness
+  uint8_t pulseBrightness = 64 + (uint8_t)(191 * constrain(heart->pulseThreshold / 1.8f, 0.0f, 1.0f)); // 64-255 based on size
+
+  // Smooth the color transition (slow decay)
+  heart->pulseColorHue += (fftResult[dominantBand] - heart->pulseColorHue) * pulseColorDecayRate;
+  heart->pulseColorValue += (map(fftResult[dominantBand], 0, 255, 64, 255) - heart->pulseColorValue) * pulseColorDecayRate;
+
   for (int x = 0; x < cols; x++) {
+    float dx = (x - heart->centerX) * heart->scale;
+    float dxSqrt = sqrt(fabs(dx));
     for (int y = 0; y < rows; y++) {
-      float dx = (x - centerX) * scale;
-      float dy = - (y - centerY) * scale + heartOffsetY;
-			float dxy = 1.25 * dy - sqrt(fabs(dx));
+      // Draw outer heart with palette
+      float dy = - (y - heart->centerY) * heart->scale + HEART_OFFSET_Y;
+      float dxy = 1.25 * dy - dxSqrt;
       float h = sqrt(2 + dx * dx + dxy * dxy - 1);
-      SEGMENT.setPixelColorXY(x, y, SEGMENT.color_from_palette((direction ? 1 : -1) * h * intensity + advance, false, PALETTE_SOLID_WRAP, 255));
+
+      CRGB pixeColor = SEGMENT.color_from_palette((direction ? 1 : -1) * h * intensity + advance, false, PALETTE_SOLID_WRAP, 255);
+      SEGMENT.setPixelColorXY(x, y, pixeColor);
+
+      // Draw inner heart with gradient and crossfade
+      if (h < threshold) {
+        float normalizedH = h / threshold; // 0.0 at center, 1.0 at edge
+
+        if (normalizedH < 0.8f) {
+          // Inner gradient: black at center, peak at 80%
+          uint8_t value = scale8(heart->pulseColorValue, (uint8_t)(normalizedH / 0.8f * pulseBrightness));
+
+          CRGB innerColor = CHSV(heart->pulseColorHue, 255, value);
+          SEGMENT.setPixelColorXY(x, y, innerColor);
+        } else {
+          // Crossfade zone: blend inner heart with outer heart (80% to 100%)
+          float crossfadeFactor = (normalizedH - 0.8f) / 0.2f; // 0.0 to 1.0
+
+          // Inner heart color at peak brightness
+          uint8_t value = scale8(heart->pulseColorValue, pulseBrightness);
+          CRGB innerColor = CHSV(heart->pulseColorHue, 255, value);
+
+          // Blend between inner and outer heart
+          CRGB blendedColor = innerColor.lerp8(pixeColor, (uint8_t)(crossfadeFactor * 255));
+          SEGMENT.setPixelColorXY(x, y, blendedColor);
+        }
+      }
     }
   }
 
   return FRAMETIME;
 } // mode_2DPixelHeart()
-static const char _data_FX_MODE_2DPIXELHEART[] PROGMEM = "Pixel Heart@!,!,,,,Flip Direction;;!;2;pal=46"; //beatsin
-
+static const char _data_FX_MODE_2DPIXELHEART[] PROGMEM = "Pixel Heart@!,!,Sensitivity,,,Flip Direction;;!;2f;pal=46,ix=128";
 
 #endif // WLED_DISABLE_2D
 
