@@ -39,7 +39,7 @@ check_git_repo() {
 check_upstream_remote() {
     if ! git remote | grep -q "^upstream$"; then
         print_error "No 'upstream' remote found. Please add upstream remote first:"
-        echo "git remote add upstream https://github.com/Aircoookie/WLED"
+        echo "git remote add upstream https://github.com/wled/WLED"
         exit 1
     fi
 }
@@ -47,7 +47,7 @@ check_upstream_remote() {
 # Function to list recent tags
 list_tags() {
     print_info "Fetching upstream repository..."
-    git fetch upstream --tags
+    git fetch upstream --tags --force
 
     print_info "Last 10 tags from upstream:"
     git tag -l --sort=-version:refname | head -10
@@ -58,7 +58,7 @@ update_to_tag() {
     local tag=$1
 
     print_info "Fetching upstream repository..."
-    git fetch upstream --tags
+    git fetch upstream --tags --force
 
     # Check if tag exists
     if ! git tag -l | grep -q "^${tag}$"; then
