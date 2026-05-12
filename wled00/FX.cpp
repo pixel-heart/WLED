@@ -9416,8 +9416,8 @@ static const char _data_FX_MODE_PARTICLEGALAXY[] PROGMEM = "PS Galaxy@!,!,Size,,
  *   y ~ (-1.1 , 1.3 )
  *   x ~ (-1.1 , 1.1 )
  */
-uint16_t mode_2DPixelHeart() {
-  if (!strip.isMatrix) return mode_static(); // not a 2D set-up
+void mode_2DPixelHeart() {
+  if (!strip.isMatrix || !SEGMENT.is2D()) FX_FALLBACK_STATIC;
 
   const uint8_t speed = 1 + ((255 - SEGMENT.speed) >> 1); // 128 - 1
   const uint8_t intensity = 1 + (SEGMENT.intensity >> 2); // 1 - 64
@@ -9441,7 +9441,6 @@ uint16_t mode_2DPixelHeart() {
     }
   }
 
-  return FRAMETIME;
 } // mode_2DPixelHeart()
 static const char _data_FX_MODE_2DPIXELHEART[] PROGMEM = "Pixel Heart@!,!,,,,Flip Direction;;!;2;pal=46"; //beatsin
 
