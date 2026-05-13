@@ -1956,7 +1956,7 @@ void mode_colorwaves_pride_base(bool isPride2015) {
   unsigned msmultiplier = beatsin88_t(147, 23, 60);
 
   unsigned hue16 = sHue16;
-  unsigned hueinc16 = isPride2015 ? beatsin88_t(113, 1, 3000) : 
+  unsigned hueinc16 = isPride2015 ? beatsin88_t(113, 1, 3000) :
                                      beatsin88_t(113, 60, 300) * SEGMENT.intensity * 10 / 255;
 
   sPseudotime += duration * msmultiplier;
@@ -4286,7 +4286,7 @@ void mode_sunrise() {
 
   for (unsigned i = 0; i <= SEGLEN/2; i++)
   {
-    //default palette is Fire    
+    //default palette is Fire
     unsigned wave = triwave16((i * stage) / SEGLEN);
     wave = (wave >> 8) + ((wave * SEGMENT.intensity) >> 15);
     uint32_t c;
@@ -4977,13 +4977,13 @@ void mode_ColorClouds()
 
   // Higher values make the clouds move faster.
   const uint32_t volSpeed = 1 + SEGMENT.speed;
-  
+
   // Higher values make the color change faster.
   const uint32_t hueSpeed = 1 + SEGMENT.intensity;
-  
+
   // Higher values make more clouds (but smaller ones).
   const uint32_t volSqueeze = 8 + SEGMENT.custom1;
-  
+
   // Higher values make the clouds more colorful.
   const uint32_t hueSqueeze = SEGMENT.custom2;
 
@@ -5353,7 +5353,7 @@ void mode_2Dfirenoise(void) {               // firenoise2d. By Andrew Tuline. Ye
   for (int j=0; j < cols; j++) {
     for (int i=0; i < rows; i++) {
       indexx = perlin8(j*yscale*rows/255, i*xscale+strip.now/4);                                               // We're moving along our Perlin map.
-      SEGMENT.setPixelColorXY(j, i, ColorFromPalette(pal, min(i*indexx/11, 225U), i*255/rows, LINEARBLEND));   // With that value, look up the 8 bit colour palette value and assign it to the current LED.    
+      SEGMENT.setPixelColorXY(j, i, ColorFromPalette(pal, min(i*indexx/11, 225U), i*255/rows, LINEARBLEND));   // With that value, look up the 8 bit colour palette value and assign it to the current LED.
     } // for i
   } // for j
 } // mode_2Dfirenoise()
@@ -5387,7 +5387,7 @@ typedef struct Cell {
     uint8_t alive : 1, faded : 1, toggleStatus : 1, edgeCell: 1, oscillatorCheck : 1, spaceshipCheck : 1, unused : 2;
 } Cell;
 
-void mode_2Dgameoflife(void) { // Written by Ewoud Wijma, inspired by https://natureofcode.com/book/chapter-7-cellular-automata/ 
+void mode_2Dgameoflife(void) { // Written by Ewoud Wijma, inspired by https://natureofcode.com/book/chapter-7-cellular-automata/
                                    // and https://github.com/DougHaber/nlife-color , Modified By: Brandon Butler
   if (!strip.isMatrix || !SEGMENT.is2D()) FX_FALLBACK_STATIC; // not a 2D set-up
   const int cols = SEG_W, rows = SEG_H;
@@ -6838,7 +6838,7 @@ void mode_gravcenter_base(unsigned mode) {
   if(mode == 2) offset = 0;  // Gravimeter
   if (tempsamp >= gravcen->topLED + offset) gravcen->topLED = tempsamp-offset;
   else if (gravcen->gravityCounter % gravity == 0) gravcen->topLED--;
-  
+
   if(mode == 1) {  //Gravcentric
     for (int i=0; i<tempsamp; i++) {
       uint8_t index = segmentSampleAvg*24+strip.now/200;
@@ -6882,7 +6882,7 @@ void mode_gravcenter_base(unsigned mode) {
       SEGMENT.setPixelColor(gravcen->topLED+SEGLEN/2, SEGMENT.color_from_palette(strip.now, false, PALETTE_SOLID_WRAP, 0));
       SEGMENT.setPixelColor(SEGLEN/2-1-gravcen->topLED, SEGMENT.color_from_palette(strip.now, false, PALETTE_SOLID_WRAP, 0));
     }
-  } 
+  }
   gravcen->gravityCounter = (gravcen->gravityCounter + 1) % gravity;
 }
 
@@ -7144,13 +7144,13 @@ void mode_puddles_base(bool peakdetect) {
       if (pos+size>= SEGLEN) size = SEGLEN - pos;
     }
   }
-  else {                                                    // puddles  
+  else {                                                    // puddles
     if (volumeRaw > 1) {
       size = volumeRaw * SEGMENT.intensity /256 /8 + 1;     // Determine size of the flash based on the volume.
       if (pos+size >= SEGLEN) size = SEGLEN - pos;
-    } 
+    }
   }
-  
+
   for (unsigned i=0; i<size; i++) {                          // Flash the LED's.
     SEGMENT.setPixelColor(pos+i, SEGMENT.color_from_palette(strip.now, false, PALETTE_SOLID_WRAP, 0));
   }
@@ -7158,12 +7158,12 @@ void mode_puddles_base(bool peakdetect) {
 
 void mode_puddlepeak(void) {                // Puddlepeak. By Andrew Tuline.
   mode_puddles_base(true);
-} 
+}
 static const char _data_FX_MODE_PUDDLEPEAK[] PROGMEM = "Puddlepeak@Fade rate,Puddle size,Select bin,Volume (min);!,!;!;1v;c2=0,m12=0,si=0"; // Pixels, Beatsin
 
 void mode_puddles(void) {                   // Puddles. By Andrew Tuline.
   mode_puddles_base(false);
-} 
+}
 static const char _data_FX_MODE_PUDDLES[] PROGMEM = "Puddles@Fade rate,Puddle size;!,!;!;1v;m12=0,si=0"; // Pixels, Beatsin
 
 
@@ -9502,7 +9502,7 @@ void mode_2DPixelHeart() {
   heart->pulseThreshold += (heart->targetThreshold - heart->pulseThreshold) * pulseSizeGrowRate;
 
   // Threshold scales with currentSize and maxSize - larger size = more pixels inside = bigger heart
-  float threshold = constrain(heart->pulseThreshold * heart->pulseThreshold * 0.8f, 0, 3.872f);
+  float threshold = constrain(heart->pulseThreshold * heart->pulseThreshold * 0.8f, 0, 2.5f);
 
   // Calculate fade based on current size for brightness
   uint8_t pulseBrightness = 64 + (uint8_t)(191 * constrain(heart->pulseThreshold / 1.8f, 0.0f, 1.0f)); // 64-255 based on size
@@ -9511,45 +9511,50 @@ void mode_2DPixelHeart() {
   heart->pulseColorHue += (fftResult[dominantBand] - heart->pulseColorHue) * pulseColorDecayRate;
   heart->pulseColorValue += (map(fftResult[dominantBand], 0, 255, 64, 255) - heart->pulseColorValue) * pulseColorDecayRate;
 
+  // Color 1: background (if set, replaces palette gradient)
+  uint32_t bgColor = SEGCOLOR(0);
+  // Color 2: base hue for inner sound-reactive heart (if set)
+  uint32_t innerCol2 = SEGCOLOR(1);
+  uint8_t baseHue = 0;
+  if (innerCol2 > 0) {
+    baseHue = rgb2hsv(CRGB(innerCol2)).h;
+  }
+
   for (int x = 0; x < cols; x++) {
     float dx = (x - heart->centerX) * heart->scale;
     float dxSqrt = sqrt(fabs(dx));
     for (int y = 0; y < rows; y++) {
-      // Draw outer heart with palette
+      // Draw outer heart: solid Color 1 if set, otherwise palette gradient
       float dy = - (y - heart->centerY) * heart->scale + HEART_OFFSET_Y;
       float dxy = 1.25 * dy - dxSqrt;
       float h = sqrt(2 + dx * dx + dxy * dxy - 1);
 
-      CRGB pixeColor = SEGMENT.color_from_palette((direction ? 1 : -1) * h * intensity + advance, false, PALETTE_SOLID_WRAP, 255);
+      // Palette gradient (heart rings) layered over bg color (bg fills the dark gaps)
+      CRGB palColor = SEGMENT.color_from_palette((direction ? 1 : -1) * h * intensity + advance, false, PALETTE_SOLID_WRAP, 255);
+      CRGB pixeColor = (bgColor > 0)
+        ? CRGB(color_add(bgColor, RGBW32(palColor.r, palColor.g, palColor.b, 0), true))
+        : palColor;
       SEGMENT.setPixelColorXY(x, y, pixeColor);
 
-      // Draw inner heart with gradient and crossfade
+      // Inner sound-reactive heart: blended over outer; volume boosts blend, distance softens edge
       if (h < threshold) {
         float normalizedH = h / threshold; // 0.0 at center, 1.0 at edge
+        // Volume weight: 0.5 baseline at quiet, 1.0 at loud
+        float volumeWeight = 0.5f + 0.5f * constrain((heart->pulseThreshold - 0.3f) / 1.5f, 0.0f, 1.0f);
+        // Distance weight: 1.0 at center, ~0.4 at edge (smoother, never fully transparent)
+        float distanceWeight = 1.0f - 0.6f * normalizedH;
+        uint8_t blendAmount = (uint8_t)(volumeWeight * distanceWeight * 255.0f);
 
-        if (normalizedH < 0.8f) {
-          // Inner gradient: black at center, peak at 80%
-          uint8_t value = scale8(heart->pulseColorValue, (uint8_t)(normalizedH / 0.8f * pulseBrightness));
-
-          CRGB innerColor = CHSV(heart->pulseColorHue, 255, value);
-          SEGMENT.setPixelColorXY(x, y, innerColor);
-        } else {
-          // Crossfade zone: blend inner heart with outer heart (80% to 100%)
-          float crossfadeFactor = (normalizedH - 0.8f) / 0.2f; // 0.0 to 1.0
-
-          // Inner heart color at peak brightness
-          uint8_t value = scale8(heart->pulseColorValue, pulseBrightness);
-          CRGB innerColor = CHSV(heart->pulseColorHue, 255, value);
-
-          // Blend between inner and outer heart
-          CRGB blendedColor = CRGB(color_blend(RGBW32(innerColor.r, innerColor.g, innerColor.b, 0), RGBW32(pixeColor.r, pixeColor.g, pixeColor.b, 0), (uint8_t)(crossfadeFactor * 255)));
-          SEGMENT.setPixelColorXY(x, y, blendedColor);
-        }
+        uint8_t hue = baseHue + (uint8_t)heart->pulseColorHue + (uint8_t)(normalizedH * 160);
+        uint8_t value = (uint8_t)heart->pulseColorValue;
+        CRGB innerColor = CRGB(CHSV(hue, 255, value));
+        CRGB blended = CRGB(color_blend(RGBW32(pixeColor.r, pixeColor.g, pixeColor.b, 0), RGBW32(innerColor.r, innerColor.g, innerColor.b, 0), blendAmount));
+        SEGMENT.setPixelColorXY(x, y, blended);
       }
     }
   }
 } // mode_2DPixelHeart()
-static const char _data_FX_MODE_2DPIXELHEART[] PROGMEM = "Pixel Heart@!,!,Sensitivity,,,Flip Direction;;!;2f;pal=46,ix=128";
+static const char _data_FX_MODE_2DPIXELHEART[] PROGMEM = "Pixel Heart@!,!,Sensitivity,,,Flip Direction;Bg,Fg;!;2f;pal=46,ix=128";
 
 
 #endif // WLED_DISABLE_2D
@@ -11207,7 +11212,7 @@ void WS2812FX::setupEffectData() {
   addEffect(FX_MODE_COLORTWINKLE, &mode_colortwinkle, _data_FX_MODE_COLORTWINKLE);
   addEffect(FX_MODE_LAKE, &mode_lake, _data_FX_MODE_LAKE);
   addEffect(FX_MODE_METEOR, &mode_meteor, _data_FX_MODE_METEOR);
-  //addEffect(FX_MODE_METEOR_SMOOTH, &mode_meteor_smooth, _data_FX_MODE_METEOR_SMOOTH); // merged with mode_meteor 
+  //addEffect(FX_MODE_METEOR_SMOOTH, &mode_meteor_smooth, _data_FX_MODE_METEOR_SMOOTH); // merged with mode_meteor
   addEffect(FX_MODE_RAILWAY, &mode_railway, _data_FX_MODE_RAILWAY);
   addEffect(FX_MODE_RIPPLE, &mode_ripple, _data_FX_MODE_RIPPLE);
   addEffect(FX_MODE_TWINKLEFOX, &mode_twinklefox, _data_FX_MODE_TWINKLEFOX);
@@ -11225,7 +11230,7 @@ void WS2812FX::setupEffectData() {
   addEffect(FX_MODE_SPARKLE, &mode_sparkle, _data_FX_MODE_SPARKLE);
   addEffect(FX_MODE_GLITTER, &mode_glitter, _data_FX_MODE_GLITTER);
   addEffect(FX_MODE_SOLID_GLITTER, &mode_solid_glitter, _data_FX_MODE_SOLID_GLITTER);
-  addEffect(FX_MODE_MULTI_COMET, &mode_multi_comet, _data_FX_MODE_MULTI_COMET);  
+  addEffect(FX_MODE_MULTI_COMET, &mode_multi_comet, _data_FX_MODE_MULTI_COMET);
   #ifdef WLED_PS_DONT_REPLACE_1D_FX
   addEffect(FX_MODE_ROLLINGBALLS, &mode_rolling_balls, _data_FX_MODE_ROLLINGBALLS);
   addEffect(FX_MODE_STARBURST, &mode_starburst, _data_FX_MODE_STARBURST);
@@ -11251,7 +11256,7 @@ void WS2812FX::setupEffectData() {
   addEffect(FX_MODE_SINEWAVE, &mode_sinewave, _data_FX_MODE_SINEWAVE);
   addEffect(FX_MODE_PHASEDNOISE, &mode_phased_noise, _data_FX_MODE_PHASEDNOISE);
   addEffect(FX_MODE_FLOW, &mode_flow, _data_FX_MODE_FLOW);
-  addEffect(FX_MODE_CHUNCHUN, &mode_chunchun, _data_FX_MODE_CHUNCHUN);  
+  addEffect(FX_MODE_CHUNCHUN, &mode_chunchun, _data_FX_MODE_CHUNCHUN);
   addEffect(FX_MODE_WASHING_MACHINE, &mode_washing_machine, _data_FX_MODE_WASHING_MACHINE);
   addEffect(FX_MODE_BLENDS, &mode_blends, _data_FX_MODE_BLENDS);
   addEffect(FX_MODE_TV_SIMULATOR, &mode_tv_simulator, _data_FX_MODE_TV_SIMULATOR);
