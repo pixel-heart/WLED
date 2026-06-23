@@ -1,0 +1,30 @@
+name: PixelHeart PR Build
+
+# Build the PixelHeart firmware across all three hardware targets
+# (ph_dig2go / ESP32, ph_c3_magwled / ESP32-C3, ph_s3_magwled_pro / ESP32-S3)
+# on every pull request. This validates that PR branches compile for the real
+# products; it uploads the resulting .bin files as run artifacts but does NOT
+# publish, release, or deploy anything.
+#
+# Precursor note: the firmware artifacts produced here are the intended handoff
+# point for a future "publish to Firebase from PR branches" step, which would
+# consume these artifacts in a separate, secret-bearing job.
+
+on:
+  pull_request:
+  # Allow manual runs from the Actions tab for ad-hoc verification.
+  workflow_dispatch:
+
+# Build-only: no releases, no deploys, so read access is all that is needed.
+permissions:
+  contents: read
+
+jobs:
+  pixelheart_build:
+    name: Build PixelHeart targets
+    # Reuse the shared build matrix, but activate the PixelHeart envs by copying
+    # platformio_override.pixelheart.ini over platformio_override.ini. The
+    # override's default_envs (the 3 ph_* targets) becomes the build matrix.
+    uses: ./.github/workflows/build.yml
+    with:
+      override_file: platformio_override.pixelheart.ini

@@ -8,6 +8,10 @@ on:
         description: 'Build the release env matrix (uses .github/platformio_release.ini.template)'
         type: boolean
         default: false
+      override_file:
+        description: 'Path to a platformio override file to activate before gathering/building envs (copied to platformio_override.ini, which PlatformIO auto-loads). Empty = build platformio.ini default_envs.'
+        type: string
+        default: ''
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -22,6 +26,11 @@ jobs:
     - name: Apply release config
       if: inputs.release
       run: cp .github/platformio_release.ini.template platformio_release.ini
+    - name: Apply override config
+      # PlatformIO auto-loads platformio_override.ini and its default_envs takes
+      # precedence, so the matrix below is gathered from the override's env list.
+      if: inputs.override_file != ''
+      run: cp "${{ inputs.override_file }}" platformio_override.ini
     - uses: actions/setup-python@v5
       with:
         python-version: '3.12'
@@ -49,6 +58,11 @@ jobs:
     - name: Apply release config
       if: inputs.release
       run: cp .github/platformio_release.ini.template platformio_release.ini
+    - name: Apply override config
+      # Must match the override applied in get_default_envs so the env name
+      # resolved by the matrix actually exists when building.
+      if: inputs.override_file != ''
+      run: cp "${{ inputs.override_file }}" platformio_override.ini
     - name: Set up Node.js
       uses: actions/setup-node@v4
       with:
